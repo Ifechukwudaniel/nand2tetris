@@ -12,5 +12,11 @@ CHIP Not {
     OUT out;
 
     PARTS:
+<<<<<<< HEAD
     // Put your code here:
 }
+=======
+    Nand(a=in, b=in, out=out);
+
+}
+>>>>>>> Solutions for And, Not, Or, Xor, Mux and Dmux.
