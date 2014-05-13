@@ -39,5 +39,31 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+        
+        And(a=instruction[15], b=instruction[3], out=writeM); //YAY
+        And(a=instruction[15], b=instruction[4], out=writeD);
+        And(a=instruction[15], b=instruction[5], out=writeA);
+
+        Mux16(a=instruction, b=ALUResult, sel=instruction[15], out=AorC);
+        ARegister(in=AorC, load=writeA, out=storedA, out[0..14]=addressM); //YAY
+        Mux(a=true, b=instruction[12], sel=instruction[15], out=AorM);
+        Mux16(a=storedA, b=inM, sel=AorM, out=A);
+        
+        //Do a jump?
+        And(a=zr, b=instruction[1], out=doJumpIfZero);
+        And(a=ng, b=instruction[2], out=doJumpIfNG);
+        Not(in=zr, out=notZR);
+        Not(in=ng, out=notNG);
+        And(a=notZR, b=notNG, out=notZRandNG);
+        And(a=notZRandNG, b=instruction[0], out=doJumpIfPos);
+        Or(a=doJumpIfZero, b=doJumpIfNG, out=doJump1);
+        Or(a=doJump1, b=doJumpIfPos, out=doJump);
+        Not(in=doJump, out=notDoJump);
+
+        PC(in=storedA, inc=notDoJump, load=doJump, reset=reset, out[0..14]=pc); //YAY
+
+        DRegister(in=DRegLookup, load=writeD, out=D);
+        ALU(x=A, y=D, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], 
+            f=instruction[7], no=instruction[6], zr=zr, ng=ng,
+            out=ALUResult, out=DRegLookup, out=outM); //YAY
 }
