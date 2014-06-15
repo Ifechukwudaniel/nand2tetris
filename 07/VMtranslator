@@ -1,0 +1,118 @@
+#! /usr/local/bin/python
+
+import os.path
+import sys
+import glob
+
+
+ARITHMETIC_COMMANDS =  set(["add", "sub", "neg", "eq", "gt", "lt", "and", "or", "not"])
+C_ARITHMETIC = 1
+C_PUSH = 2
+C_POP = 3
+C_LABEL = 4
+C_GOTO = 5
+C_IF = 6
+C_FUNCTION = 7
+C_RETURN = 8
+C_CALL = 9
+
+
+class Parser(object):
+    def __init__(self, filename):
+        self.f = open(filename, "rb")
+        self.command = ''
+
+    def advance(self):
+        line = self.f.readline()
+        while line:
+            if line.strip() == "" or line.startswith("//"):
+                line = self.f.readline()
+            else:
+                self.command = line.strip().split(' ')
+                return True
+        return False
+
+    def commandType(self):
+        if len(self.command) == 1 and self.command[0] in ARITHMETIC_COMMANDS:
+            return C_ARITHMETIC
+        elif self.command[0] == "push":
+            return C_PUSH
+        elif self.command[0] == "pop":
+            return C_POP
+        else:
+            raise Exception("Unidentified command: {}".format(' '.join(self.command)))
+
+    def arg1(self, command_type):
+        if command_type == C_ARITHMETIC:
+            return self.command[0]
+        return self.command[1]
+
+    def arg2(self):
+        return self.command[2]
+
+class CodeWriter(object):
+    def __init__(self, filename):
+        self.f = open(filename, 'w')
+
+    def writeArithmetic(self, command):
+        pass
+
+    def writePushPop(self, command, segment, index):
+        pass
+
+def get_vm_files(path):
+    files = []
+    if os.path.isdir(path):
+        glob_path = os.path.join("./", path, "**", "*.vm")
+        for fname in glob.glob(glob_path):
+            files.append(fname)
+    elif os.path.isfile(path) and path.endswith(".vm"):
+         files.append(path)
+    else:
+        raise Exception("Arg 1 is not a valid dir or filename.")
+
+    return files
+
+
+def main():
+    if len(sys.argv) != 2:
+        print("This script takes 1 arg: a filename or a directory name.")
+        return 1
+
+    path = sys.argv[1]
+
+    vm_files = get_vm_files(path)
+
+    if not vm_files:
+        print("No files with the .vm file extension found.")
+        return 1
+
+    for filename in vm_files:
+        # first parse the commands
+        p = Parser(filename)
+        commands = []
+        while p.advance():
+            command = {}
+            command['command_type'] = p.commandType()
+            command['args'] = []
+            if command['command_type'] not in set([C_RETURN]):
+                command['args'].append(p.arg1(command['command_type']))
+                if command['command_type'] in set([C_PUSH, C_POP, C_FUNCTION, C_CALL]):
+                     command['args'].append(p.arg2())
+            commands.append(command)
+        p.f.close()
+
+        #then translate them into assembler code
+        filename_out = filename.split('.vm')[0] + '.asm'
+        cw =  CodeWriter(filename_out)
+        for c in commands:
+            if c['command_type'] in set([C_ARITHMETIC]):
+                cw.writeArithmetic(c['args'][0])
+            elif c['command_type'] in set([C_PUSH, C_POP]):
+                cw.writePushPop(c['command_type'], c['args'][0], c['args'][1])
+            else:
+                print("Some other command")
+        cw.f.close()
+
+if __name__ == "__main__":
+    main()
